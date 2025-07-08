@@ -3,7 +3,7 @@ import bodyParser from 'body-parser'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import { connectDb } from './config/db.js'
-import multer from 'multer'
+import { securityMiddleware, limiter, authLimiter, corsOptions } from './middleware/security.js'
 
 dotenv.config()
 
@@ -18,20 +18,25 @@ import routerOrder from './routers/order.route.js'
 // const upload = multer({ dest: 'uploads/' });
 
 const app = express()
-// var corsOptions = {
-//   origin: 'http://example.com',
-//   optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
-// }
 
-// app.use(cors(corsOptions))
-app.use(cors())
+// Security middleware
+app.use(securityMiddleware)
+
+// CORS configuration
+app.use(cors(corsOptions))
+
+// Body parsing middleware
 app.use(bodyParser.json())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+
+// Rate limiting
+app.use('/api', limiter) // General rate limiting for all API routes
+
+// Connect to database
 connectDb()
 
 const port = process.env.PORT || 3000
-
 
 const myLogger = function (req, res, next) {
   console.log('LOGGED')
@@ -50,10 +55,20 @@ app.get('/', (req, res) => {
   res.send(responseText)
 })
 
-// app.get('/user/:id', (req, res) => {
-//   res.status(200).json(req.params);
-// });
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date(),
+    uptime: process.uptime()
+  })
+})
 
+// Auth routes with strict rate limiting (5 requests per 15 minutes)
+app.use('/user/login', authLimiter)
+app.use('/user/register', authLimiter)
+
+// API routes
 app.use('/user', userRouter);
 app.use('/category', categoryRouter);
 app.use('/product', productRouter);
@@ -61,16 +76,10 @@ app.use('/order', routerOrder);
 app.use('/upload',
   //  upload.single('file'),
   routerUpload);
-// app.post('/upload', (req, res) => {
-//   res.send('Upload Success');
-// });
 
 app.use(express.static('./public'));// set public folder for upload by
 
 app.get('/', (req, res) => res.send('/index.html'));
-
-
-
 
 app.use(errorHandler)
 app.listen(port, () => {
