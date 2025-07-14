@@ -43,6 +43,7 @@
     "node-cache": "^5.1.2",
     "nodemailer": "^6.9.13",
     "path": "^0.12.7",
+    "socket.io": "^4.8.1",
     "stripe": "^15.8.0",
     "url": "^0.11.4",
     "winston": "^3.11.0",
