@@ -1,77 +1,4 @@
-// import express from 'express';
-// import http from 'http';
-// import { Server } from 'socket.io';
 
-// const app = express();
-// const server = http.createServer(app);
-// const io = new Server(server);
-
-// app.use(express.static('public'));
-
-// // Cấu hình users và rooms
-// const users = {
-//     'A': { color: 'blue', room: 'room1', connected: false },
-//     'B': { color: 'black', room: 'room1', connected: false },
-//     'C': { color: 'red', room: 'room2', connected: false },
-//     'D': { color: 'green', room: 'room2', connected: false }
-// };
-
-// io.on('connection', (socket) => {
-//     console.log('User connected:', socket.id);
-
-//     // Gửi danh sách users có thể chọn
-//     socket.emit('available-users', users);
-
-//     socket.on('join', (username) => {
-//         if (users[username] && !users[username].connected) {
-//             users[username].connected = true;
-//             socket.username = username;
-//             socket.room = users[username].room;
-
-//             // Join room tương ứng
-//             socket.join(socket.room);
-
-//             socket.emit('join-success', {
-//                 username: username,
-//                 room: socket.room
-//             });
-
-//             // Thông báo cho các user khác trong cùng room
-//             socket.to(socket.room).emit('user-joined', username);
-
-//             console.log(`${username} joined ${socket.room}`);
-//         } else {
-//             socket.emit('join-failed', 'User không tồn tại hoặc đã được sử dụng');
-//         }
-//     });
-
-//     socket.on('message', (data) => {
-//         if (socket.username && socket.room) {
-//             // Gửi tin nhắn chỉ cho users trong cùng room
-//             io.to(socket.room).emit('message', {
-//                 username: socket.username,
-//                 message: data,
-//                 color: users[socket.username].color,
-//                 room: socket.room
-//             });
-//         }
-//     });
-
-//     socket.on('disconnect', () => {
-//         if (socket.username) {
-//             users[socket.username].connected = false;
-//             socket.to(socket.room).emit('user-left', socket.username);
-//             console.log(`${socket.username} left ${socket.room}`);
-//         }
-//     });
-// });
-
-// server.listen(3000, () => {
-//     console.log('Server running on port 3000');
-// });
-
-
-//---------
 import express from 'express'
 import bodyParser from 'body-parser'
 import cors from 'cors'
@@ -163,8 +90,9 @@ app.use(express.static('./public'));// set public folder for upload by
 app.get('/', (req, res) => res.send('/index.html'));
 
 app.use(errorHandler)
-app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`)
+
+server.listen(port, () => {
+    console.log(`Server running on port ${port}`)
 })
 
 export { io };
