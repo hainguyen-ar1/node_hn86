@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat 2 Rooms</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .room-info { 
+            background: #f0f0f0; 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            border-radius: 5px; 
+        }
+        #messages { 
+            height: 400px; 
+            border: 1px solid #ccc; 
+            overflow-y: scroll; 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            background: white;
+        }
+        .message { margin-bottom: 10px; }
+        .username { font-weight: bold; margin-right: 10px; }
+        .blue { color: blue; }
+        .black { color: black; }
+        .red { color: red; }
+        .green { color: green; }
+        .system { color: gray; font-style: italic; }
+        #userSelect { margin-bottom: 20px; }
+        #chatArea { display: none; }
+        .user-btn { 
+            padding: 10px 15px; 
+            margin: 5px; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-size: 14px;
+        }
+        .user-btn.room1 { background: #e3f2fd; }
+        .user-btn.room2 { background: #fff3e0; }
+        input { padding: 8px; margin-right: 10px; width: 300px; }
+        button { padding: 8px 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Chat 2 Rooms - A,B (Room1) | C,D (Room2)</h1>
+        
+        <div id="userSelect">
+            <h3>Chọn người dùng:</h3>
+            <div>
+                <strong>Room 1:</strong>
+                <button class="user-btn room1" onclick="selectUser('A')">User A (Xanh)</button>
+                <button class="user-btn room1" onclick="selectUser('B')">User B (Đen)</button>
+            </div>
+            <div>
+                <strong>Room 2:</strong>
+                <button class="user-btn room2" onclick="selectUser('C')">User C (Đỏ)</button>
+                <button class="user-btn room2" onclick="selectUser('D')">User D (Xanh lá)</button>
+            </div>
+        </div>
+        
+        <div id="chatArea">
+            <div class="room-info">
+                <strong>Bạn là:</strong> <span id="currentUser"></span> | 
+                <strong>Room:</strong> <span id="currentRoom"></span>
+            </div>
+            <div id="messages"></div>
+            <div>
+                <input type="text" id="messageInput" placeholder="Nhập tin nhắn...">
+                <button onclick="sendMessage()">Gửi</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const messages = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const userSelect = document.getElementById('userSelect');
+        const chatArea = document.getElementById('chatArea');
+        const currentUser = document.getElementById('currentUser');
+        const currentRoom = document.getElementById('currentRoom');
+        
+        let myUsername = '';
+        let myRoom = '';
+
+        function selectUser(username) {
+            socket.emit('join', username);
+        }
+
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message) {
+                socket.emit('message', message);
+                messageInput.value = '';
+            }
+        }
+
+        // Socket events
+        socket.on('join-success', (data) => {
+            myUsername = data.username;
+            myRoom = data.room;
+            currentUser.textContent = data.username;
+            currentRoom.textContent = data.room;
+            userSelect.style.display = 'none';
+            chatArea.style.display = 'block';
+            messageInput.focus();
+        });
+
+        socket.on('join-failed', (error) => {
+            alert(error);
+        });
+
+        socket.on('message', (data) => {
+            const div = document.createElement('div');
+            console.log(data);
+            div.className = 'message';
+            div.innerHTML = `<span class="username ${data.color}">${data.username}:</span>${data.message}`;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        });
+
+        socket.on('user-joined', (username) => {
+            const div = document.createElement('div');
+            div.className = 'message system';
+            div.textContent = `${username} đã vào ${myRoom}`;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        });
+
+        socket.on('user-left', (username) => {
+            const div = document.createElement('div');
+            div.className = 'message system';
+            div.textContent = `${username} đã rời ${myRoom}`;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        });
+
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

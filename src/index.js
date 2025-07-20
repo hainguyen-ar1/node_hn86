@@ -17,6 +17,10 @@ import productRouter from './routers/product.route.js'
 import routerUpload from './routers/upload.route.js'
 import { errorHandler } from './middleware/error.js'
 import routerOrder from './routers/order.route.js'
+import messageRouter from './routers/message.route.js'
+import queueRouter from './routers/queue.route.js'
+
+
 // import { upload } from './middleware/upload.js'
 
 // const upload = multer({ dest: 'uploads/' });
@@ -58,9 +62,7 @@ const requestTime = function (req, res, next) {
 app.use(requestTime)
 
 app.get('/', (req, res) => {
-    let responseText = 'Hello World!<br>'
-    responseText += `<small>Requested at: ${req.requestTime}</small>`
-    res.send(responseText)
+    res.redirect('/login.html')
 })
 
 // Health check endpoint
@@ -75,12 +77,15 @@ app.get('/health', (req, res) => {
 // Auth routes with strict rate limiting (5 requests per 15 minutes)
 app.use('/user/login', authLimiter)
 app.use('/user/register', authLimiter)
+// app.use('/user/register', authLimiter)
 
 // API routes
 app.use('/user', userRouter);
 app.use('/category', categoryRouter);
 app.use('/product', productRouter);
 app.use('/order', routerOrder);
+app.use('/messages', messageRouter);
+app.use('/queue', queueRouter);
 app.use('/upload',
     //  upload.single('file'),
     routerUpload);

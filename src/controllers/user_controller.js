@@ -193,7 +193,10 @@ const getUserProfile = expressAsyncHandler(async (req, res) => {
                         phone: user.phone,
                         image: user.image,
                         isAdmin: user.isAdmin,
+                        gender: user.gender,
                         currentRoom: user.currentRoom,
+                        isOnline: user.isOnline,
+                        isWaiting: user.isWaiting,
                     },
                 }
             ));

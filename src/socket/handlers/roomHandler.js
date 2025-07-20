@@ -1,29 +1,86 @@
 import { userManager } from '../models/userModel.js';
 import { SOCKET_EVENTS } from '../config/socketConfig.js';
 
-export const handleJoin = (socket, io, username) => {
-    if (userManager.isUserAvailable(username)) {
-        // Connect user
-        userManager.connectUser(username);
+// Handle general join (for free chat)
+export const handleJoin = async (socket, io, userData) => {
+    try {
+        console.log('User joining general chat:', userData);
         
-        // Set socket properties
-        socket.username = username;
-        socket.room = userManager.getUserRoom(username);
+        // Connect user to socket
+        userManager.connectUser(socket.id, userData);
         
-        // Join room
-        socket.join(socket.room);
+        // Store user data in socket
+        socket.userId = userData._id;
+        socket.fullName = userData.fullName;
+        socket.email = userData.email;
+        socket.room = 'general-chat';
         
-        // Emit success
-        socket.emit(SOCKET_EVENTS.JOIN_SUCCESS, {
-            username: username,
-            room: socket.room
+        // Join general chat room
+        socket.join('general-chat');
+        
+        // Notify user of successful join
+        socket.emit('join-success', {
+            room: 'general-chat',
+            message: 'Joined general chat room'
         });
         
-        // Notify others in room
-        socket.to(socket.room).emit(SOCKET_EVENTS.USER_JOINED, username);
+        // Notify others in the room
+        socket.to('general-chat').emit('user-joined', userData.fullName);
         
-        console.log(`${username} joined ${socket.room}`);
-    } else {
-        socket.emit(SOCKET_EVENTS.JOIN_FAILED, 'User không tồn tại hoặc đã được sử dụng');
+        console.log(`${userData.fullName} joined general chat`);
+        
+    } catch (error) {
+        console.error('Error in handleJoin:', error);
+        socket.emit('join-failed', 'Failed to join chat');
+    }
+};
+
+// Handle joining specific room (for matched users)
+export const handleJoinRoom = async (socket, io, data) => {
+    try {
+        const { userId, fullName, email, roomId } = data;
+        
+        console.log('User joining specific room:', { userId, fullName, roomId });
+        
+        // Verify user is in the room
+        const isInRoom = await userManager.isUserInRoom(userId, roomId);
+        if (!isInRoom) {
+            socket.emit('join-failed', 'You are not a participant in this room');
+            return;
+        }
+        
+        // Connect user to socket
+        const userData = { _id: userId, fullName, email };
+        userManager.connectUser(socket.id, userData);
+        
+        // Store user data in socket
+        socket.userId = userId;
+        socket.fullName = fullName;
+        socket.email = email;
+        socket.roomId = roomId;
+        socket.room = roomId;
+        
+        // Join the specific room
+        socket.join(roomId);
+        
+        // Get room participants
+        const participants = await userManager.getRoomParticipants(roomId);
+        const otherParticipants = participants.filter(p => p.userId._id !== userId);
+        
+        // Notify user of successful join
+        socket.emit('join-success', {
+            roomId: roomId,
+            participants: otherParticipants,
+            message: 'Joined matched room successfully'
+        });
+        
+        // Notify other participants in the room
+        socket.to(roomId).emit('user-joined', fullName);
+        
+        console.log(`${fullName} joined room ${roomId}`);
+        
+    } catch (error) {
+        console.error('Error in handleJoinRoom:', error);
+        socket.emit('join-failed', 'Failed to join room');
     }
 };
