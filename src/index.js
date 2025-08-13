@@ -19,6 +19,7 @@ import { errorHandler } from './middleware/error.js'
 import routerOrder from './routers/order.route.js'
 import messageRouter from './routers/message.route.js'
 import queueRouter from './routers/queue.route.js'
+import roomRouter from './routers/room.route.js'
 
 
 // import { upload } from './middleware/upload.js'
@@ -86,6 +87,7 @@ app.use('/product', productRouter);
 app.use('/order', routerOrder);
 app.use('/messages', messageRouter);
 app.use('/queue', queueRouter);
+app.use('/room', roomRouter);
 app.use('/upload',
     //  upload.single('file'),
     routerUpload);

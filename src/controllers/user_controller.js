@@ -119,6 +119,7 @@ const updateProfile = expressAsyncHandler(async (req, res) => {
             user.fullName = req.body.fullName || user.fullName;
             user.email = req.body.email || user.email;
             user.phone = req.body.phone || user.phone;
+            user.gender = req.body.gender || user.gender;
             // if (req.body.password) {
             //     user.password = bcrypt.hashSync(req.body.password, 10);
             // }
@@ -133,6 +134,7 @@ const updateProfile = expressAsyncHandler(async (req, res) => {
                         email: updateUser.email,
                         phone: updateUser.phone,
                         image: updateUser.image,
+                        gender: updateUser.gender,
                         isAdmin: updateUser.isAdmin,
                         token: generateToken(updateUser._id),
                     },

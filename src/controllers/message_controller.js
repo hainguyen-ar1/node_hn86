@@ -76,9 +76,9 @@ const getMessagesByRoom = expressAsyncHandler(async (req, res) => {
     try {
         const { roomId } = req.params;
         const userId = req.user._id;
-        const { page = 1, limit = 50 } = req.query;
+        const { limit = 50, beforeId } = req.query;
 
-        // Check if room exists and user is a participant
+        // Kiểm tra quyền truy cập phòng
         const room = await RoomModel.findById(roomId);
         if (!room) {
             return res.status(404).json(getSimpRes({ 
@@ -98,33 +98,36 @@ const getMessagesByRoom = expressAsyncHandler(async (req, res) => {
             }));
         }
 
-        // Get messages with pagination
-        const skip = (page - 1) * limit;
-        const messages = await MessageModel.find({
+        // Cursor-based pagination
+        let query = {
             roomId,
             isDeleted: false
-        })
-        .populate('senderId', 'fullName image')
-        .sort({ timestamp: -1 })
-        .skip(skip)
-        .limit(parseInt(limit));
+        };
+        if (beforeId) {
+            query._id = { $lt: beforeId };
+        }
 
-        const totalMessages = await MessageModel.countDocuments({
-            roomId,
-            isDeleted: false
-        });
+        const messages = await MessageModel.find(query)
+            .populate('senderId', 'fullName image')
+            .sort({ _id: -1 })
+            .limit(parseInt(limit) + 1);
+
+        const hasNext = messages.length > limit;
+        if (hasNext) messages.pop();
+
+        const nextCursor = messages.length > 0 
+            ? messages[messages.length - 1]._id.toString()
+            : null;
 
         res.status(200).json(getSimpResData({
             status: StatusRes.SUCCESS,
             message: "Messages retrieved successfully",
             data: {
-                messages: messages.reverse(), // Show oldest first
+                messages: messages.reverse(),
                 pagination: {
-                    currentPage: parseInt(page),
-                    totalPages: Math.ceil(totalMessages / limit),
-                    totalMessages,
-                    hasNext: skip + messages.length < totalMessages,
-                    hasPrev: page > 1
+                    hasNext,
+                    nextCursor,
+                    limit: parseInt(limit)
                 }
             }
         }));

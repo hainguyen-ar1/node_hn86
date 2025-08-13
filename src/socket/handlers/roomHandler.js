@@ -84,3 +84,27 @@ export const handleJoinRoom = async (socket, io, data) => {
         socket.emit('join-failed', 'Failed to join room');
     }
 };
+
+// Handle leaving room
+export const handleLeaveRoom = async (socket, io, data) => {
+    try {
+        const { roomId, userId, fullName } = data;
+        
+        console.log('User leaving room:', { userId, fullName, roomId });
+        
+        // Leave the socket room
+        socket.leave(roomId);
+        
+        // Notify other participants in the room
+        socket.to(roomId).emit('user-left', {
+            fullName: fullName,
+            userId: userId,
+            roomEnded: false // Will be determined by room controller
+        });
+        
+        console.log(`${fullName} left room ${roomId}`);
+        
+    } catch (error) {
+        console.error('Error in handleLeaveRoom:', error);
+    }
+};

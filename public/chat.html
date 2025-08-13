@@ -83,6 +83,27 @@
             background: #ff5252;
         }
 
+        .room-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .leave-room-btn {
+            background: #ffc107;
+            color: #333;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .leave-room-btn:hover {
+            background: #e0a800;
+        }
+
         .container {
             max-width: 1000px;
             margin: 20px auto;
@@ -402,7 +423,11 @@
                 <span id="userGender" class="user-gender">Loading...</span>
             </div>
         </div>
-        <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+        <div class="room-controls">
+            <button class="leave-room-btn" onclick="leaveRoom()" id="leaveRoomBtn" style="display: none;">🚪 Thoát
+                Room</button>
+            <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+        </div>
     </div>
 
     <div class="container">
@@ -584,6 +609,11 @@
             document.getElementById('messageInput').disabled = false;
             document.getElementById('sendBtn').disabled = false;
             document.getElementById('messageInput').focus();
+
+            // Show leave room button if user is in a matched room
+            if (currentRoomId) {
+                document.getElementById('leaveRoomBtn').style.display = 'block';
+            }
         }
 
         let matchedUser = null;
@@ -710,7 +740,7 @@
         async function loadRoomInfo(roomId) {
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch(`/messages/room/${roomId}`, {
+                const response = await fetch(`/messages/room/${roomId}?limit=100`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -735,6 +765,71 @@
             }
         }
 
+        async function leaveRoom() {
+            if (!confirm('Bạn có chắc muốn thoát khỏi room này?')) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('token');
+
+                // Call API to leave room
+                const response = await fetch('/room/leave', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        roomId: currentRoomId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.status === 'success') {
+                    // Emit leave room event to notify other participants
+                    if (socket) {
+                        socket.emit('leave-room', {
+                            roomId: currentRoomId,
+                            userId: currentUser._id,
+                            fullName: currentUser.fullName
+                        });
+                    }
+
+                    // Reset room state
+                    currentRoomId = null;
+                    matchedUser = null;
+
+                    // Hide leave room button
+                    document.getElementById('leaveRoomBtn').style.display = 'none';
+
+                    // Show welcome screen
+                    showWelcomeScreen();
+
+                    // Clear messages
+                    document.getElementById('messages').innerHTML = '';
+
+                    console.log('Successfully left room');
+
+                    // Show success message
+                    addSystemMessage('Bạn đã thoát khỏi room thành công');
+
+                    // Disconnect socket after a short delay to ensure message is sent
+                    setTimeout(() => {
+                        if (socket) {
+                            socket.disconnect();
+                        }
+                    }, 1000);
+                } else {
+                    alert(data.message || 'Lỗi khi thoát room');
+                }
+            } catch (error) {
+                console.error('Error leaving room:', error);
+                alert('Lỗi kết nối. Vui lòng thử lại.');
+            }
+        }
+
         function backToWelcome() {
             document.getElementById('matchFoundScreen').style.display = 'none';
             showWelcomeScreen();
@@ -744,10 +839,10 @@
             socket = io();
             console.log('initializeSocket');
 
-                        socket.on('connect', () => {
+            socket.on('connect', () => {
                 console.log('Connected to server');
                 isConnected = true;
-                
+
                 // Join with user data
                 socket.emit('join', {
                     _id: currentUser._id,
@@ -777,8 +872,20 @@
                 addSystemMessage(`${username} đã tham gia chat`);
             });
 
-            socket.on('user-left', (username) => {
-                addSystemMessage(`${username} đã rời khỏi chat`);
+            socket.on('user-left', (data) => {
+                if (typeof data === 'string') {
+                    // Legacy format
+                    addSystemMessage(`${data} đã rời khỏi chat`);
+                } else {
+                    // New format with user info
+                    const userName = data.fullName || 'Người dùng';
+                    addSystemMessage(`${userName} đã rời khỏi chat`);
+
+                    // If room is ended, show appropriate message
+                    if (data.roomEnded) {
+                        addSystemMessage('Room đã kết thúc. Bạn có thể tìm kiếm người khác.');
+                    }
+                }
             });
         }
 
@@ -821,8 +928,20 @@
                 addSystemMessage(`${username} đã tham gia chat`);
             });
 
-            socket.on('user-left', (username) => {
-                addSystemMessage(`${username} đã rời khỏi chat`);
+            socket.on('user-left', (data) => {
+                if (typeof data === 'string') {
+                    // Legacy format
+                    addSystemMessage(`${data} đã rời khỏi chat`);
+                } else {
+                    // New format with user info
+                    const userName = data.fullName || 'Người dùng';
+                    addSystemMessage(`${userName} đã rời khỏi chat`);
+
+                    // If room is ended, show appropriate message
+                    if (data.roomEnded) {
+                        addSystemMessage('Room đã kết thúc. Bạn có thể tìm kiếm người khác.');
+                    }
+                }
             });
         }
 

@@ -1,7 +1,6 @@
 import { userManager } from '../models/userModel.js';
 import { SOCKET_EVENTS } from '../config/socketConfig.js';
-import { handleJoin } from './roomHandler.js';
-import { handleJoinRoom } from './roomHandler.js';
+import { handleJoin, handleJoinRoom, handleLeaveRoom } from './roomHandler.js';
 import { handleMessage } from './messageHandler.js';
 
 export const handleConnection = async (socket, io) => {
@@ -14,6 +13,7 @@ export const handleConnection = async (socket, io) => {
     // Register event handlers
     socket.on(SOCKET_EVENTS.JOIN, (userData) => handleJoin(socket, io, userData));
     socket.on('join-room', (data) => handleJoinRoom(socket, io, data));
+    socket.on('leave-room', (data) => handleLeaveRoom(socket, io, data));
     socket.on(SOCKET_EVENTS.MESSAGE, (data) => handleMessage(socket, io, data));
     socket.on(SOCKET_EVENTS.DISCONNECT, () => handleDisconnect(socket, io));
 };
