@@ -5,6 +5,8 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import { connectDb } from './config/db.js'
 import { securityMiddleware, limiter, authLimiter, corsOptions } from './middleware/security.js'
+import swaggerUi from 'swagger-ui-express'
+import specs from './swagger.js'
 
 import http from 'http';
 import { initializeSocket } from './socket/socketServer.js'
@@ -61,6 +63,12 @@ const requestTime = function (req, res, next) {
 }
 
 app.use(requestTime)
+
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Chat App API Documentation'
+}))
 
 app.get('/', (req, res) => {
     res.redirect('/login.html')
