@@ -7,6 +7,7 @@
   "scripts": {
     "start": "nodemon --inspect src/index.js",
     "dev": "nodemon --inspect src/index.js",
+    "dev_socket": "nodemon --inspect src/index_socket.js",
     "test": "jest",
     "lint": "eslint src/",
     "format": "prettier --write src/"
@@ -43,7 +44,10 @@
     "node-cache": "^5.1.2",
     "nodemailer": "^6.9.13",
     "path": "^0.12.7",
+    "socket.io": "^4.8.1",
     "stripe": "^15.8.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "url": "^0.11.4",
     "winston": "^3.11.0",
     "xss-clean": "^0.1.4"

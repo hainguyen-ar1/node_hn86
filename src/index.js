@@ -1,9 +1,15 @@
+
 import express from 'express'
 import bodyParser from 'body-parser'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import { connectDb } from './config/db.js'
 import { securityMiddleware, limiter, authLimiter, corsOptions } from './middleware/security.js'
+import swaggerUi from 'swagger-ui-express'
+import specs from './swagger.js'
+
+import http from 'http';
+import { initializeSocket } from './socket/socketServer.js'
 
 dotenv.config()
 
@@ -13,11 +19,20 @@ import productRouter from './routers/product.route.js'
 import routerUpload from './routers/upload.route.js'
 import { errorHandler } from './middleware/error.js'
 import routerOrder from './routers/order.route.js'
+import messageRouter from './routers/message.route.js'
+import queueRouter from './routers/queue.route.js'
+import roomRouter from './routers/room.route.js'
+
+
 // import { upload } from './middleware/upload.js'
 
 // const upload = multer({ dest: 'uploads/' });
 
 const app = express()
+const server = http.createServer(app)
+app.use(express.static('public'));
+// Initialize socket.io
+const io = initializeSocket(server)
 
 // Security middleware
 app.use(securityMiddleware)
@@ -39,50 +54,60 @@ connectDb()
 const port = process.env.PORT || 3000
 
 const myLogger = function (req, res, next) {
-  console.log('LOGGED')
-  next()
+    console.log('LOGGED')
+    next()
 }
 const requestTime = function (req, res, next) {
-  req.requestTime = Date.now()
-  next()
+    req.requestTime = Date.now()
+    next()
 }
 
 app.use(requestTime)
 
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Chat App API Documentation'
+}))
+
 app.get('/', (req, res) => {
-  let responseText = 'Hello World!<br>'
-  responseText += `<small>Requested at: ${req.requestTime}</small>`
-  res.send(responseText)
+    res.redirect('/login.html')
 })
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date(),
-    uptime: process.uptime()
-  })
+    res.json({
+        status: 'healthy',
+        timestamp: new Date(),
+        uptime: process.uptime()
+    })
 })
 
 // Auth routes with strict rate limiting (5 requests per 15 minutes)
 app.use('/user/login', authLimiter)
 app.use('/user/register', authLimiter)
+// app.use('/user/register', authLimiter)
 
 // API routes
 app.use('/user', userRouter);
 app.use('/category', categoryRouter);
 app.use('/product', productRouter);
 app.use('/order', routerOrder);
+app.use('/messages', messageRouter);
+app.use('/queue', queueRouter);
+app.use('/room', roomRouter);
 app.use('/upload',
-  //  upload.single('file'),
-  routerUpload);
+    //  upload.single('file'),
+    routerUpload);
 
 app.use(express.static('./public'));// set public folder for upload by
 
 app.get('/', (req, res) => res.send('/index.html'));
 
 app.use(errorHandler)
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
+
+server.listen(port, () => {
+    console.log(`Server running on port ${port}`)
 })
 
+export { io };
