@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Socket Connection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .message { background-color: #d1ecf1; color: #0c5460; margin: 5px 0; padding: 5px; }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Socket Connection</h1>
+    
+    <div id="status" class="status disconnected">Disconnected</div>
+    
+    <div>
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+        <button onclick="joinRoom()">Join Room</button>
+        <button onclick="leaveRoom()">Leave Room</button>
+    </div>
+    
+    <div>
+        <label for="roomId">Room ID:</label>
+        <input type="text" id="roomId" placeholder="Nhập Room ID">
+    </div>
+    
+    <div>
+        <label for="message">Message:</label>
+        <textarea id="message" rows="3" placeholder="Nhập tin nhắn"></textarea>
+        <button onclick="sendMessage()">Send Message</button>
+    </div>
+    
+    <div>
+        <h3>Messages:</h3>
+        <div id="messages"></div>
+    </div>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket = null;
+        let currentRoom = null;
+        
+        function connect() {
+            if (socket) {
+                socket.disconnect();
+            }
+            
+            socket = io();
+            
+            socket.on('connect', () => {
+                updateStatus('Connected', 'connected');
+                addMessage('System', 'Connected to server');
+            });
+            
+            socket.on('disconnect', () => {
+                updateStatus('Disconnected', 'disconnected');
+                addMessage('System', 'Disconnected from server');
+            });
+            
+            socket.on('message', (data) => {
+                const sender = data.sender ? data.sender.fullName : 'Unknown';
+                const message = data.message || data.content || 'No message';
+                addMessage(sender, message);
+            });
+            
+            socket.on('join-success', (data) => {
+                addMessage('System', `Joined room: ${data.roomId || data.room}`);
+            });
+            
+            socket.on('user-joined', (username) => {
+                addMessage('System', `${username} joined the room`);
+            });
+            
+            socket.on('user-left', (data) => {
+                const username = typeof data === 'string' ? data : data.fullName;
+                addMessage('System', `${username} left the room`);
+            });
+        }
+        
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                currentRoom = null;
+            }
+        }
+        
+        function joinRoom() {
+            const roomId = document.getElementById('roomId').value;
+            if (!roomId) {
+                alert('Vui lòng nhập Room ID');
+                return;
+            }
+            
+            if (socket && socket.connected) {
+                socket.emit('join-room', {
+                    userId: 'test-user-id',
+                    fullName: 'Test User',
+                    email: 'test@example.com',
+                    roomId: roomId
+                });
+                currentRoom = roomId;
+                addMessage('System', `Attempting to join room: ${roomId}`);
+            } else {
+                alert('Socket not connected');
+            }
+        }
+        
+        function leaveRoom() {
+            if (socket && socket.connected && currentRoom) {
+                socket.emit('leave-room', {
+                    roomId: currentRoom,
+                    userId: 'test-user-id',
+                    fullName: 'Test User'
+                });
+                addMessage('System', `Left room: ${currentRoom}`);
+                currentRoom = null;
+            } else {
+                alert('Not in a room or socket not connected');
+            }
+        }
+        
+        function sendMessage() {
+            const message = document.getElementById('message').value;
+            if (!message) {
+                alert('Vui lòng nhập tin nhắn');
+                return;
+            }
+            
+            if (socket && socket.connected) {
+                socket.emit('message', message);
+                addMessage('You', message);
+                document.getElementById('message').value = '';
+            } else {
+                alert('Socket not connected');
+            }
+        }
+        
+        function updateStatus(text, className) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = text;
+            statusDiv.className = `status ${className}`;
+        }
+        
+        function addMessage(sender, message) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.innerHTML = `<strong>${sender}:</strong> ${message}`;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        // Auto-connect on page load
+        window.onload = function() {
+            connect();
+        };
+    </script>
+</body>
+</html>

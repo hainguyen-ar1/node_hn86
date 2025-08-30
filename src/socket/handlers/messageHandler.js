@@ -18,17 +18,17 @@ export const handleMessage = async (socket, io, data) => {
                 fullName: socket.fullName,
                 email: socket.email
             },
-            message: data,
+            message: typeof data === 'string' ? data : data.content,
             timestamp: new Date().toISOString()
         };
         
-        // Save message to database if room exists
-        if (socket.roomId) {
+        // Save message to database if room exists and not already saved
+        if (socket.roomId && !data.messageId) {
             try {
                 const message = await MessageModel.create({
                     roomId: socket.roomId,
                     senderId: socket.userId,
-                    content: data,
+                    content: typeof data === 'string' ? data : data.content,
                     messageType: 'text',
                     timestamp: new Date(),
                     isRead: false,
@@ -55,7 +55,7 @@ export const handleMessage = async (socket, io, data) => {
         // Send message to all users in the room
         io.to(socket.room).emit('message', messageData);
         
-        console.log(`Message from ${socket.fullName} in ${socket.room}: ${data}`);
+        console.log(`Message from ${socket.fullName} in ${socket.room}: ${typeof data === 'string' ? data : data.content}`);
         
     } catch (error) {
         console.error('Error handling message:', error);

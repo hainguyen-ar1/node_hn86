@@ -4,6 +4,8 @@
 
 Dự án này đã được tích hợp Swagger để tạo API documentation tự động. Swagger giúp developers và testers dễ dàng hiểu và test các API endpoints.
 
+**Lưu ý quan trọng**: Ứng dụng chat đã được cập nhật để sử dụng API `messages/send` để gửi tin nhắn và lưu vào database, đồng thời broadcast qua socket để các user khác có thể nhận được tin nhắn real-time.
+
 ## Cách truy cập
 
 1. Khởi động server:
@@ -12,6 +14,8 @@ npm run dev
 ```
 
 2. Truy cập Swagger UI tại: `http://localhost:3000/api-docs`
+
+3. Test Socket connection tại: `http://localhost:3000/test_socket.html`
 
 ## Các API Endpoints được document
 
@@ -25,7 +29,7 @@ npm run dev
 - **GET** `/user/profile` - Lấy thông tin profile user
 
 ### 2. Messages API
-- **POST** `/messages/send` - Gửi tin nhắn
+- **POST** `/messages/send` - Gửi tin nhắn (lưu vào database và broadcast qua socket)
 - **GET** `/messages/room/{roomId}` - Lấy tin nhắn theo phòng (với cursor-based pagination)
 - **PUT** `/messages/read` - Đánh dấu tin nhắn đã đọc
 - **DELETE** `/messages/{messageId}` - Xóa tin nhắn
@@ -59,6 +63,38 @@ npm run dev
 
 ### 8. Upload API
 - **POST** `/upload/image` - Upload hình ảnh
+
+## Kiến trúc Chat mới
+
+### Gửi tin nhắn
+- **Trước đây**: Gửi trực tiếp qua socket
+- **Hiện tại**: Gọi API `POST /messages/send` để lưu tin nhắn vào database
+- **Socket broadcast**: Sau khi lưu thành công, tin nhắn được broadcast qua socket đến tất cả user trong room
+- **Lợi ích**: 
+  - Tin nhắn được lưu trữ vĩnh viễn trong database
+  - Có thể load tin nhắn cũ khi tham gia room
+  - Dễ dàng implement features như search, filter, analytics
+  - Real-time delivery qua socket
+
+### Nhận tin nhắn
+- **Vẫn giữ**: Socket để nhận tin nhắn real-time từ người khác
+- **Lợi ích**: 
+  - Trải nghiệm real-time tốt
+  - Không cần refresh để xem tin nhắn mới
+
+### Flow hoạt động
+1. **User gửi tin nhắn** → Frontend gọi API `messages/send`
+2. **API xử lý** → Lưu tin nhắn vào database
+3. **Socket broadcast** → API broadcast tin nhắn qua socket đến tất cả user trong room
+4. **Frontend hiển thị** → Tin nhắn được hiển thị ngay lập tức cho người gửi
+5. **Real-time delivery** → Các user khác nhận tin nhắn qua socket và hiển thị
+
+### Cấu trúc kỹ thuật
+```
+Frontend → API /messages/send → Database
+                ↓
+            Socket Broadcast → Real-time delivery to other users
+```
 
 ## Tính năng Swagger
 
@@ -101,6 +137,17 @@ npm run dev
   3. Nhập token vào field "bearerAuth"
   4. Click "Authorize"
 
+### 4. Test Chat Flow
+- Đăng nhập và tham gia room
+- Gửi tin nhắn (sẽ gọi API và broadcast qua socket)
+- Tin nhắn sẽ được lưu vào database và hiển thị real-time
+
+### 5. Test Socket Connection
+- Truy cập `/test_socket.html`
+- Connect socket và join room
+- Gửi tin nhắn để test real-time communication
+- Kiểm tra xem tin nhắn có được broadcast đúng không
+
 ## Cấu trúc file
 
 ```
@@ -115,7 +162,19 @@ src/
 │   ├── product.route.js
 │   ├── order.route.js
 │   └── upload.route.js
-└── index.js                # Tích hợp Swagger UI
+├── index.js                # Tích hợp Swagger UI và Socket
+├── controllers/
+│   └── message_controller.js  # Logic xử lý tin nhắn + Socket broadcast
+└── socket/                 # Socket server configuration
+    ├── socketServer.js
+    └── handlers/
+        ├── connectionHandler.js
+        ├── messageHandler.js
+        └── roomHandler.js
+
+public/
+├── chat.html               # Chat interface với API + Socket integration
+└── test_socket.html        # Test page cho socket connection
 ```
 
 ## Cập nhật Documentation
@@ -149,3 +208,8 @@ router.get('/new-endpoint', controllerFunction);
 - Các API protected cần token hợp lệ để test
 - File upload chỉ hỗ trợ trong Swagger UI, không thể test từ code
 - Swagger comments phải tuân theo format chuẩn để generate documentation chính xác
+- Chat application sử dụng hybrid approach: API để gửi và lưu, Socket để broadcast và nhận real-time
+- Đảm bảo JWT token hợp lệ khi test chat API
+- Socket server được tích hợp với message controller để broadcast tin nhắn tự động
+- **Vấn đề socket instance đã được sửa**: Đảm bảo tất cả socket operations sử dụng cùng format roomId (string)
+- **Test socket**: Sử dụng `/test_socket.html` để kiểm tra socket connection và real-time communication

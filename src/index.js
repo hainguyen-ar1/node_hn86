@@ -34,6 +34,13 @@ app.use(express.static('public'));
 // Initialize socket.io
 const io = initializeSocket(server)
 
+// Set socket instance in message controller
+import { setSocketIO } from './controllers/message_controller.js'
+setSocketIO(io)
+
+// Export io for use in other modules
+export { io }
+
 // Security middleware
 app.use(securityMiddleware)
 
@@ -110,4 +117,4 @@ server.listen(port, () => {
     console.log(`Server running on port ${port}`)
 })
 
-export { io };
+// export { io };

@@ -5,6 +5,14 @@ import expressAsyncHandler from "express-async-handler";
 import { getSimpRes, getSimpResData } from "../const/wrap_response.js";
 import { StatusRes } from "../const/ResStatus.js";
 
+// Global socket instance - will be set from index.js
+let socketIO = null;
+
+// Function to set socket instance
+export const setSocketIO = (io) => {
+    socketIO = io;
+};
+
 // @desc Send a message
 // @route POST /api/messages/send
 // @access Private
@@ -53,6 +61,39 @@ const sendMessage = expressAsyncHandler(async (req, res) => {
 
         // Populate sender information
         await message.populate('senderId', 'fullName image');
+
+        // Broadcast message to all users in the room via socket
+        if (socketIO) {
+            try {
+                const messageData = {
+                    sender: {
+                        _id: message.senderId._id,
+                        fullName: message.senderId.fullName,
+                        image: message.senderId.image
+                    },
+                    message: message.content,
+                    timestamp: message.timestamp,
+                    messageId: message._id
+                };
+                
+                // Convert roomId to string and emit to all users in the room
+                const roomIdString = roomId.toString();
+                socketIO.to(roomIdString).emit('message', messageData);
+                console.log(`Message broadcasted via socket to room: ${roomIdString}`);
+                
+                // Also emit to general room for debugging
+                // socketIO.emit('message', {
+                //     ...messageData,
+                //     debug: `Broadcasted from room: ${roomIdString}`
+                // });
+                console.log('---hide message from io in message_controller')
+            } catch (socketError) {
+                console.error('Socket broadcast error:', socketError);
+                // Continue even if socket broadcast fails
+            }
+        } else {
+            console.log('Socket IO not available for broadcasting');
+        }
 
         res.status(201).json(getSimpResData({
             status: StatusRes.SUCCESS,

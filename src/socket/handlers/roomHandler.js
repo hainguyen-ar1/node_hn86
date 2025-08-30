@@ -61,7 +61,8 @@ export const handleJoinRoom = async (socket, io, data) => {
         socket.room = roomId;
         
         // Join the specific room
-        socket.join(roomId);
+        const roomIdString = roomId.toString();
+        socket.join(roomIdString);
         
         // Get room participants
         const participants = await userManager.getRoomParticipants(roomId);
@@ -69,15 +70,15 @@ export const handleJoinRoom = async (socket, io, data) => {
         
         // Notify user of successful join
         socket.emit('join-success', {
-            roomId: roomId,
+            roomId: roomIdString,
             participants: otherParticipants,
             message: 'Joined matched room successfully'
         });
         
         // Notify other participants in the room
-        socket.to(roomId).emit('user-joined', fullName);
+        socket.to(roomIdString).emit('user-joined', fullName);
         
-        console.log(`${fullName} joined room ${roomId}`);
+        console.log(`${fullName} joined room ${roomIdString}`);
         
     } catch (error) {
         console.error('Error in handleJoinRoom:', error);
@@ -93,16 +94,17 @@ export const handleLeaveRoom = async (socket, io, data) => {
         console.log('User leaving room:', { userId, fullName, roomId });
         
         // Leave the socket room
-        socket.leave(roomId);
+        const roomIdString = roomId.toString();
+        socket.leave(roomIdString);
         
         // Notify other participants in the room
-        socket.to(roomId).emit('user-left', {
+        socket.to(roomIdString).emit('user-left', {
             fullName: fullName,
             userId: userId,
             roomEnded: false // Will be determined by room controller
         });
         
-        console.log(`${fullName} left room ${roomId}`);
+        console.log(`${fullName} left room ${roomIdString}`);
         
     } catch (error) {
         console.error('Error in handleLeaveRoom:', error);
